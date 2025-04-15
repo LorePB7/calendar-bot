@@ -3,6 +3,7 @@ const { google } = require('googleapis');
 const { Telegraf } = require('telegraf');
 const axios = require('axios');
 const fs = require('fs');
+const http = require('http'); // Añadir esta línea
 
 // Setup Telegram
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
@@ -307,3 +308,15 @@ console.log('🤖 Bot en marcha...');
 // Manejo de cierre adecuado
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+// Crear un servidor HTTP simple para mantener la aplicación en ejecución en Render
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.write('<h1>TuCalendarioBot está activo</h1><p>El bot de Telegram está funcionando correctamente.</p>');
+  res.end();
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Servidor HTTP escuchando en el puerto ${PORT}`);
+});
