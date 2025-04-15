@@ -285,10 +285,13 @@ bot.on('text', async (ctx) => {
         const startForLink = formatoEnlace(eventDate);
         const endForLink = formatoEnlace(new Date(eventDate.getTime() + 30 * 60000));
         
-        // Crear enlace con la zona horaria correcta
-        const calendarLink = `https://calendar.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(tarea)}&details=${encodeURIComponent(`Creado por TuCalendarioBot`)}&dates=${startForLink}/${endForLink}&ctz=${encodeURIComponent(timeZone)}`;
+        // Crear enlace con la zona horaria correcta - versión mejorada para móviles
+        const calendarLink = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(tarea)}&details=${encodeURIComponent(`Creado por TuCalendarioBot`)}&dates=${startForLink}/${endForLink}&ctz=${encodeURIComponent(timeZone)}`;
 
-        ctx.reply(`✅ Evento "${tarea}"\n📅 Creado para: ${fechaFormateada}\n🕒 Horario: ${horaFormateada}\n\n📱 Para agregarlo a tu calendario:\n1. Haz clic en el enlace\n2. Presiona "Guardar" en la página que se abre\n\n${calendarLink}\n\n⏰ El evento incluye un recordatorio 30 minutos antes.`);
+        // Crear mensaje con instrucciones específicas para móviles
+        const replyMessage = `✅ Evento "${tarea}"\n📅 Creado para: ${fechaFormateada}\n🕒 Horario: ${horaFormateada}\n\n📱 Para agregarlo a tu calendario:\n1. Haz clic en el enlace\n2. Si estás en móvil, selecciona "Abrir con Google Calendar"\n3. Presiona "Guardar" en la pantalla que se abre\n\n${calendarLink}\n\n⏰ El evento incluye un recordatorio 30 minutos antes.`;
+        
+        ctx.reply(replyMessage);
       } catch (err) {
         console.error('Error completo:', err);
         ctx.reply('❌ Error al crear el evento: ' + err.message);
