@@ -357,3 +357,21 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Servidor HTTP escuchando en el puerto ${PORT}`);
 });
+
+// Función para mantener el servicio activo
+function keepAlive() {
+  // URL de tu servicio en Render
+  const url = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+  
+  // Hacer una petición a tu propio servidor cada 14 minutos
+  setInterval(() => {
+    http.get(url, (res) => {
+      console.log(`Ping enviado. Estado: ${res.statusCode}`);
+    }).on('error', (err) => {
+      console.error('Error al enviar ping:', err.message);
+    });
+  }, 14 * 60 * 1000); // 14 minutos en milisegundos
+}
+
+// Iniciar el mecanismo de keep-alive
+keepAlive();
