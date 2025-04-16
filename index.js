@@ -215,9 +215,20 @@ bot.on('text', async (ctx) => {
           tarea = message.replace(dateEntity.body, '').trim();
         }
         
-        // Eliminar palabras comunes al inicio
-        tarea = tarea.replace(/^(recordarme|acordarme|haceme acordar|recordatorio|agendar|anotar)\s+(de|para|que|a)?\s+/i, '');
-        tarea = tarea.replace(/^(que)?\s+(tengo|debo)?\s+(que)?\s+/i, '');
+        // Eliminar palabras y frases comunes al inicio (lista ampliada)
+        const frasesComunes = [
+          /^(recordarme|acordarme|haceme acordar|recordatorio|agendar|anotar|recordame|recordar)\s+(de|para|que|a)?\s+/i,
+          /^(que)?\s+(tengo|debo|hay|necesito)?\s+(que)?\s+/i,
+          /^(me\s+)?(podrias|podes|puedes|podés)?\s+(recordar|anotar|agendar)?\s+/i,
+          /^(no\s+)?(me\s+)?(olvide|olvides|olvidar|olvidemos)\s+(de)?\s+/i,
+          /^(tengo|hay|necesito)\s+/i,
+          /^(por\s+favor\s+)?/i
+        ];
+        
+        // Aplicar todas las expresiones regulares para limpiar la tarea
+        frasesComunes.forEach(regex => {
+          tarea = tarea.replace(regex, '');
+        });
         
         // Eliminar referencias a horas que puedan haber quedado
         if (horaMatch) {
