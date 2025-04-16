@@ -141,6 +141,7 @@ bot.on('text', async (ctx) => {
         
         // Extraer la hora exacta del mensaje
         const horaMatch = message.match(/(\d{1,2})(?::(\d{1,2}))?\s*(?:hs|hrs|horas|h)/i);
+        console.log("Hora detectada en el texto:", horaMatch ? horaMatch[0] : "No detectada");
         
         // Extraer el día de la semana del mensaje
         const diaSemanaMatch = message.match(/(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)/i);
@@ -196,15 +197,59 @@ bot.on('text', async (ctx) => {
         }
         
         // Establecer la hora exacta que el usuario especificó
-        let hora = baseDate.getHours(); // Usar la hora detectada por Wit.ai como base
-        let minutos = baseDate.getMinutes(); // Usar los minutos detectados por Wit.ai como base
+        let hora, minutos;
         
-        // Si se detectó una hora específica en el texto, usarla en lugar de la de Wit.ai
+        // Si se detectó una hora específica en el texto, usarla con prioridad absoluta
         if (horaMatch) {
           hora = parseInt(horaMatch[1]);
           minutos = horaMatch[2] ? parseInt(horaMatch[2]) : 0;
           console.log(`Hora específica detectada en el texto: ${hora}:${minutos}`);
+        } else {
+          // Solo usar la hora de Wit.ai si no se detectó una hora específica en el texto
+          hora = baseDate.getHours();
+          minutos = baseDate.getMinutes();
+          console.log(`Usando hora de Wit.ai: ${hora}:${minutos}`);
         }
+        
+        // Verificar si la hora está en formato 12h con AM/PM
+        const ampmMatch = message.match(/(\d{1,2})(?::(\d{1,2}))?\s*(am|pm)/i);
+        if (ampmMatch) {
+          hora = parseInt(ampmMatch[1]);
+          minutos = ampmMatch[2] ? parseInt(ampmMatch[2]) : 0;
+          
+          // Ajustar para PM
+          if (ampmMatch[3].toLowerCase() === 'pm' && hora < 12) {
+            hora += 12;
+          }
+          // Ajustar para AM
+          if (ampmMatch[3].toLowerCase() === 'am' && hora === 12) {
+            hora = 0;
+          }
+          
+          console.log(`Hora ajustada por formato AM/PM: ${hora}:${minutos}`);
+        }
+        
+        // Verificar si hay referencias a la mañana, tarde o noche
+        if (message.match(/mañana|manana/i) && !message.match(/pasado\s+mañana|pasado\s+manana/i) && hora < 12) {
+          // Si menciona "mañana" (no "pasado mañana") y la hora es < 12, mantener la hora
+          console.log("Referencia a la mañana detectada, manteniendo hora de la mañana");
+        } else if (message.match(/tarde/i) && hora < 12 && !horaMatch) {
+          // Si menciona "tarde" y la hora es < 12 (y no fue explícitamente especificada), ajustar a la tarde
+          hora += 12;
+          console.log(`Hora ajustada para la tarde: ${hora}:${minutos}`);
+        } else if (message.match(/noche/i) && hora < 12 && !horaMatch) {
+          // Si menciona "noche" y la hora es < 12 (y no fue explícitamente especificada), ajustar a la noche
+          hora += 12;
+          console.log(`Hora ajustada para la noche: ${hora}:${minutos}`);
+        }
+        
+        // Verificar si la hora tiene sentido
+        if (hora > 23) {
+          hora = 23;
+          console.log("Hora ajustada a 23 (máximo)");
+        }
+        
+        console.log("Hora final decidida:", hora, ":", minutos);
         
         // Mejorar la extracción de la tarea
         let tarea = message;
