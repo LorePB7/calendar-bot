@@ -196,16 +196,50 @@ bot.on('text', async (ctx) => {
         }
         
         // Establecer la hora exacta que el usuario especificó
-        let hora = 9; // Hora predeterminada si no se especifica
-        let minutos = 0;
+        let hora = baseDate.getHours(); // Usar la hora detectada por Wit.ai como base
+        let minutos = baseDate.getMinutes(); // Usar los minutos detectados por Wit.ai como base
         
+        // Si se detectó una hora específica en el texto, usarla en lugar de la de Wit.ai
         if (horaMatch) {
           hora = parseInt(horaMatch[1]);
           minutos = horaMatch[2] ? parseInt(horaMatch[2]) : 0;
+          console.log(`Hora específica detectada en el texto: ${hora}:${minutos}`);
         }
+        
+        // Mejorar la extracción de la tarea
+        let tarea = message;
+        
+        // Si hay una fecha/hora en el mensaje, intentamos extraer solo la tarea
+        if (dateEntity && dateEntity.body) {
+          // Eliminar la parte de fecha/hora
+          tarea = message.replace(dateEntity.body, '').trim();
+        }
+        
+        // Eliminar palabras comunes al inicio
+        tarea = tarea.replace(/^(recordarme|acordarme|haceme acordar|recordatorio|agendar|anotar)\s+(de|para|que|a)?\s+/i, '');
+        tarea = tarea.replace(/^(que)?\s+(tengo|debo)?\s+(que)?\s+/i, '');
+        
+        // Eliminar referencias a horas que puedan haber quedado
+        if (horaMatch) {
+          tarea = tarea.replace(horaMatch[0], '').trim();
+        }
+        
+        // Eliminar referencias a días de la semana que puedan haber quedado
+        if (diaSemanaMatch) {
+          tarea = tarea.replace(diaSemanaMatch[0], '').trim();
+        }
+        
+        // Eliminar palabras "a las" o "el día" que puedan haber quedado
+        tarea = tarea.replace(/\b(a las|el día|el dia|este|esta|próximo|proximo|próxima|proxima)\b/gi, '').trim();
+        
+        // Eliminar espacios múltiples
+        tarea = tarea.replace(/\s+/g, ' ').trim();
         
         // Capitalizar la primera letra de la tarea
         tarea = tarea.charAt(0).toUpperCase() + tarea.slice(1);
+        
+        console.log("Tarea extraída:", tarea);
+        console.log("Hora final:", hora, ":", minutos);
         
         // Crear fecha con la hora exacta (en hora local de Argentina)
         const eventDate = new Date(year, month, day, hora, minutos, 0);
