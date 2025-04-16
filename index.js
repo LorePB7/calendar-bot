@@ -143,6 +143,10 @@ bot.on('text', async (ctx) => {
         const horaMatch = message.match(/(\d{1,2})(?::(\d{1,2}))?\s*(?:hs|hrs|horas|h|:)/i);
         console.log("Hora detectada en el texto:", horaMatch ? horaMatch[0] : "No detectada");
         
+        // Extraer el día de la semana del mensaje
+        const diaSemanaMatch = message.match(/(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)/i);
+        console.log("Día de la semana detectado:", diaSemanaMatch ? diaSemanaMatch[0] : "No detectado");
+        
         // Obtener fecha base de Wit.ai
         const baseDate = new Date(date);
         console.log("Fecha base de Wit.ai:", baseDate.toISOString());
@@ -192,28 +196,16 @@ bot.on('text', async (ctx) => {
           }
         }
         
-        // Establecer la hora exacta que el usuario especificó
+        // PRIORIDAD ABSOLUTA para la hora especificada en el texto
         let hora, minutos;
         
-        // PRIORIDAD MÁXIMA: Si se detectó una hora específica en el texto
         if (horaMatch) {
+          // Si hay una hora específica en el texto, usarla con prioridad absoluta
           hora = parseInt(horaMatch[1]);
           minutos = horaMatch[2] ? parseInt(horaMatch[2]) : 0;
-          console.log(`Hora específica detectada en el texto: ${hora}:${minutos}`);
-          
-          // Verificar si la hora es válida
-          if (isNaN(hora) || hora > 23) {
-            console.log(`Hora inválida (${hora}), usando valor predeterminado`);
-            hora = 9; // Valor predeterminado si la hora es inválida
-          }
-          
-          // Verificar si los minutos son válidos
-          if (isNaN(minutos) || minutos > 59) {
-            console.log(`Minutos inválidos (${minutos}), usando 0`);
-            minutos = 0;
-          }
+          console.log(`PRIORIDAD: Hora específica detectada en el texto: ${hora}:${minutos}`);
         } else {
-          // Si no hay hora específica en el texto, usar la de Wit.ai
+          // Solo si no hay hora específica, usar la de Wit.ai
           hora = baseDate.getHours();
           minutos = baseDate.getMinutes();
           console.log(`No se detectó hora específica, usando hora de Wit.ai: ${hora}:${minutos}`);
@@ -237,20 +229,6 @@ bot.on('text', async (ctx) => {
           console.log(`Hora ajustada por formato AM/PM: ${hora}:${minutos}`);
         }
         
-        // Verificar si hay referencias a la mañana, tarde o noche
-        if (message.match(/mañana|manana/i) && !message.match(/pasado\s+mañana|pasado\s+manana/i) && hora < 12) {
-          // Si menciona "mañana" (no "pasado mañana") y la hora es < 12, mantener la hora
-          console.log("Referencia a la mañana detectada, manteniendo hora de la mañana");
-        } else if (message.match(/tarde/i) && hora < 12 && !horaMatch) {
-          // Si menciona "tarde" y la hora es < 12 (y no fue explícitamente especificada), ajustar a la tarde
-          hora += 12;
-          console.log(`Hora ajustada para la tarde: ${hora}:${minutos}`);
-        } else if (message.match(/noche/i) && hora < 12 && !horaMatch) {
-          // Si menciona "noche" y la hora es < 12 (y no fue explícitamente especificada), ajustar a la noche
-          hora += 12;
-          console.log(`Hora ajustada para la noche: ${hora}:${minutos}`);
-        }
-        
         // Verificar si la hora tiene sentido
         if (hora > 23) {
           hora = 23;
@@ -259,50 +237,67 @@ bot.on('text', async (ctx) => {
         
         console.log("HORA FINAL DECIDIDA:", hora, ":", minutos);
         
-        // Mejorar la extracción de la tarea
+        // Mejorar la extracción de la tarea - COMPLETAMENTE REESCRITO
         let tarea = message;
         
-        // Si hay una fecha/hora en el mensaje, intentamos extraer solo la tarea
+        // Si hay una fecha/hora en el mensaje, eliminarla
         if (dateEntity && dateEntity.body) {
-          // Eliminar la parte de fecha/hora
-          tarea = message.replace(dateEntity.body, '').trim();
+          tarea = tarea.replace(dateEntity.body, '').trim();
         }
         
-        // Eliminar palabras y frases comunes al inicio (lista ampliada)
-        const frasesComunes = [
+        // Eliminar referencias a horas específicas
+        if (horaMatch) {
+          tarea = tarea.replace(horaMatch[0], '').trim();
+        }
+        
+        // Eliminar referencias a AM/PM
+        if (ampmMatch) {
+          tarea = tarea.replace(ampmMatch[0], '').trim();
+        }
+        
+        // Eliminar referencias a días de la semana
+        if (diaSemanaMatch) {
+          tarea = tarea.replace(diaSemanaMatch[0], '').trim();
+        }
+        
+        // Lista completa de patrones a eliminar
+        const patronesAEliminar = [
+          // Frases introductorias
           /^(recordarme|acordarme|haceme acordar|recordatorio|agendar|anotar|recordame|recordar)\s+(de|para|que|a)?\s+/i,
           /^(que)?\s+(tengo|debo|hay|necesito)?\s+(que)?\s+/i,
           /^(me\s+)?(podrias|podes|puedes|podés)?\s+(recordar|anotar|agendar)?\s+/i,
           /^(no\s+)?(me\s+)?(olvide|olvides|olvidar|olvidemos)\s+(de)?\s+/i,
           /^(tengo|hay|necesito)\s+/i,
-          /^(por\s+favor\s+)?/i
+          /^(por\s+favor\s+)?/i,
+          
+          // Referencias temporales
+          /\b(a las|el día|el dia|este|esta|próximo|proximo|próxima|proxima)\b/gi,
+          /\b(hoy|mañana|manana|pasado mañana|ayer|anteayer)\b/gi,
+          /\b(en la mañana|en la tarde|en la noche|al mediodía|al mediodia)\b/gi,
+          /\b(temprano|tarde|noche|madrugada)\b/gi,
+          
+          // Conectores y preposiciones al inicio
+          /^(de|para|que|a|el|la|los|las|un|una|unos|unas)\s+/i,
+          
+          // Palabras relacionadas con tiempo
+          /\b(hora|minuto|segundo|semana|mes|año)\b/gi
         ];
         
-        // Aplicar todas las expresiones regulares para limpiar la tarea
-        frasesComunes.forEach(regex => {
-          tarea = tarea.replace(regex, '');
+        // Aplicar todos los patrones
+        patronesAEliminar.forEach(patron => {
+          tarea = tarea.replace(patron, '');
         });
         
-        // Eliminar referencias a horas que puedan haber quedado
-        if (horaMatch) {
-          tarea = tarea.replace(horaMatch[0], '').trim();
-        }
-        
-        // Eliminar referencias a días de la semana que puedan haber quedado
-        if (diaSemanaMatch) {
-          tarea = tarea.replace(diaSemanaMatch[0], '').trim();
-        }
-        
-        // Eliminar palabras "a las" o "el día" que puedan haber quedado
-        tarea = tarea.replace(/\b(a las|el día|el dia|este|esta|próximo|proximo|próxima|proxima)\b/gi, '').trim();
-        
-        // Eliminar espacios múltiples
+        // Eliminar espacios múltiples y espacios al inicio/final
         tarea = tarea.replace(/\s+/g, ' ').trim();
+        
+        // Eliminar puntuación al final si existe
+        tarea = tarea.replace(/[.,;:!?]+$/, '');
         
         // Capitalizar la primera letra de la tarea
         tarea = tarea.charAt(0).toUpperCase() + tarea.slice(1);
         
-        console.log("Tarea extraída:", tarea);
+        console.log("Tarea extraída final:", tarea);
         console.log("Hora final:", hora, ":", minutos);
         
         // Crear fecha con la hora exacta (en hora local de Argentina)
