@@ -139,13 +139,9 @@ bot.on('text', async (ctx) => {
         // Configurar la zona horaria correcta para Argentina
         const timeZone = 'America/Argentina/Buenos_Aires';
         
-        // Extraer la hora exacta del mensaje
-        const horaMatch = message.match(/(\d{1,2})(?::(\d{1,2}))?\s*(?:hs|hrs|horas|h)/i);
+        // Extraer la hora exacta del mensaje con un patrón más amplio
+        const horaMatch = message.match(/(\d{1,2})(?::(\d{1,2}))?\s*(?:hs|hrs|horas|h|:)/i);
         console.log("Hora detectada en el texto:", horaMatch ? horaMatch[0] : "No detectada");
-        
-        // Extraer el día de la semana del mensaje
-        const diaSemanaMatch = message.match(/(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)/i);
-        console.log("Día de la semana detectado:", diaSemanaMatch ? diaSemanaMatch[0] : "No detectado");
         
         // Obtener fecha base de Wit.ai
         const baseDate = new Date(date);
@@ -199,16 +195,28 @@ bot.on('text', async (ctx) => {
         // Establecer la hora exacta que el usuario especificó
         let hora, minutos;
         
-        // Si se detectó una hora específica en el texto, usarla con prioridad absoluta
+        // PRIORIDAD MÁXIMA: Si se detectó una hora específica en el texto
         if (horaMatch) {
           hora = parseInt(horaMatch[1]);
           minutos = horaMatch[2] ? parseInt(horaMatch[2]) : 0;
           console.log(`Hora específica detectada en el texto: ${hora}:${minutos}`);
+          
+          // Verificar si la hora es válida
+          if (isNaN(hora) || hora > 23) {
+            console.log(`Hora inválida (${hora}), usando valor predeterminado`);
+            hora = 9; // Valor predeterminado si la hora es inválida
+          }
+          
+          // Verificar si los minutos son válidos
+          if (isNaN(minutos) || minutos > 59) {
+            console.log(`Minutos inválidos (${minutos}), usando 0`);
+            minutos = 0;
+          }
         } else {
-          // Solo usar la hora de Wit.ai si no se detectó una hora específica en el texto
+          // Si no hay hora específica en el texto, usar la de Wit.ai
           hora = baseDate.getHours();
           minutos = baseDate.getMinutes();
-          console.log(`Usando hora de Wit.ai: ${hora}:${minutos}`);
+          console.log(`No se detectó hora específica, usando hora de Wit.ai: ${hora}:${minutos}`);
         }
         
         // Verificar si la hora está en formato 12h con AM/PM
@@ -249,7 +257,7 @@ bot.on('text', async (ctx) => {
           console.log("Hora ajustada a 23 (máximo)");
         }
         
-        console.log("Hora final decidida:", hora, ":", minutos);
+        console.log("HORA FINAL DECIDIDA:", hora, ":", minutos);
         
         // Mejorar la extracción de la tarea
         let tarea = message;
